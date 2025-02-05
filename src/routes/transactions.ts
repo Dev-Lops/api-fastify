@@ -6,6 +6,12 @@ import { checkSessionIdExists } from '../middlewares/check-sesson-id-exists'
 
 // Cookies <-> Formas da gente manter contexto entre as requisições
 
+// unitários; -> unidades da sua aplicação (base da pirâmide de testes)
+// integrações; -> comunicaçãoentre duas ou mais unidades
+// e2e - ponta a ponta; -> simulam um usuário operando nossa aplicação
+
+// Pirâmide de testes: primeiro teste que devemos aprender é o E2E (não dependem de nenhuma tecnologia, não dependem de arquitetura)
+
 export async function transactionsRoutes(app: FastifyInstance) {
   app.get(
     '/',
