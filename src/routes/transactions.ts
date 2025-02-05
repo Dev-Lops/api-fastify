@@ -96,6 +96,7 @@ export async function transactionsRoutes(app: FastifyInstance) {
         id: randomUUID(),
         title,
         amount: type === 'credit' ? amount : amount * -1,
+        type, // ✅ Agora estamos salvando o tipo da transação
         session_id: sessionId,
       })
 
