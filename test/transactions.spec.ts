@@ -17,19 +17,20 @@ describe('Transactions routes', () => {
     execSync('npx knex migrate:latest')
   })
 
-  // e2e -> amigos -> poucos e bons
-
   it('should be able to create a new transaction', async () => {
-    const response = await request(app.server).post('/transactions').send({
-      title: 'New transaction',
-      amount: 5000,
-      type: 'credit',
-    })
-    console.log(response)
+    const response = await request(app.server)
+      .post('/transactions')
+      .send({
+        title: 'New transaction',
+        amount: 5000,
+        type: 'credit',
+      })
+      .expect(201)
+
+    expect(response.body).toEqual({})
   })
 
   it('should be able to list all transactions', async () => {
-    // Criando uma nova transação antes de listar
     const createTransactionResponse = await request(app.server)
       .post('/transactions')
       .send({
@@ -37,31 +38,98 @@ describe('Transactions routes', () => {
         amount: 5000,
         type: 'credit',
       })
+      .expect(201)
 
-    // Capturando os cookies para manter a sessão
     const cookies = createTransactionResponse.get('Set-Cookie')
 
-    // 🔥 Verifica se os cookies foram realmente retornados
     expect(cookies).toBeDefined()
     expect(cookies!.length).toBeGreaterThan(0)
 
-    // Fazendo a requisição para listar as transações
     const listTransactionsResponse = await request(app.server)
       .get('/transactions')
-      .set('Cookie', cookies![0]) // ✅ Passando apenas o primeiro cookie
-      .expect(200) // ✅ Esperando 200 em vez de 201
+      .set('Cookie', cookies![0])
+      .expect(200)
 
-    // Verifica se pelo menos uma transação foi retornada
     expect(listTransactionsResponse.body.transactions).toBeInstanceOf(Array)
     expect(listTransactionsResponse.body.transactions.length).toBeGreaterThan(0)
 
-    // Verifica se a transação criada está na lista
-    expect(listTransactionsResponse.body.transactions).toEqual([
+    expect(listTransactionsResponse.body.transactions[0]).toEqual(
       expect.objectContaining({
         title: 'New transaction',
         amount: 5000,
         type: 'credit',
       }),
-    ])
+    )
+  })
+
+  it('should be able to get a specific transaction', async () => {
+    const createTransactionResponse = await request(app.server)
+      .post('/transactions')
+      .send({
+        title: 'New transaction',
+        amount: 5000,
+        type: 'credit',
+      })
+      .expect(201)
+
+    const cookies = createTransactionResponse.get('Set-Cookie')
+
+    expect(cookies).toBeDefined()
+    expect(cookies!.length).toBeGreaterThan(0)
+
+    const listTransactionsResponse = await request(app.server)
+      .get('/transactions')
+      .set('Cookie', cookies![0])
+      .expect(200)
+
+    const transactionId = listTransactionsResponse.body.transactions[0].id
+
+    const getTransactionResponse = await request(app.server)
+      .get(`/transactions/${transactionId}`)
+      .set('Cookie', cookies![0])
+      .expect(200)
+
+    expect(getTransactionResponse.body.transaction).toEqual(
+      expect.objectContaining({
+        id: transactionId,
+        title: 'New transaction',
+        amount: 5000,
+        type: 'credit',
+      }),
+    )
+  })
+
+  it('should be able to get the summary', async () => {
+    const createTransactionResponse = await request(app.server)
+      .post('/transactions')
+      .send({
+        title: 'Credit transaction',
+        amount: 4000,
+        type: 'credit',
+      })
+      .expect(201)
+    const cookies = createTransactionResponse.get('Set-Cookie')
+    await request(app.server)
+      .post('/transactions')
+      .set('Cookie', cookies![0])
+      .send({
+        title: 'Debit transaction',
+        amount: 1000,
+        type: 'debit',
+      })
+      .expect(201)
+    expect(cookies).toBeDefined()
+    expect(cookies!.length).toBeGreaterThan(0)
+    // 🚀 Ajustando a rota, garantindo que ela existe
+    const summaryResponse = await request(app.server)
+      .get('/transactions/summary') // Ajuste se necessário para apenas '/summary'
+      .set('Cookie', cookies![0])
+      .expect(200)
+    // ✅ Removendo a validação errada de "transactions"
+    expect(summaryResponse.body).toEqual({
+      summary: {
+        amount: 3000, // 4000 (credit) - 1000 (debit) = 3000
+      },
+    })
   })
 })
