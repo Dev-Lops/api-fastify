@@ -18,7 +18,7 @@ export async function transactionsRoutes(app: FastifyInstance) {
     {
       preHandler: [checkSessionIdExists],
     },
-    async (request, reply) => {
+    async (request) => {
       const { sessionId } = request.cookies
 
       const transactions = await knex('transactions')
@@ -77,28 +77,34 @@ export async function transactionsRoutes(app: FastifyInstance) {
       type: z.enum(['credit', 'debit']),
     })
 
-    const { title, amount, type } = createTransactionBodySchema.parse(
-      request.body,
-    )
+    try {
+      const { title, amount, type } = createTransactionBodySchema.parse(
+        request.body,
+      )
 
-    let sessionId = request.cookies.sessionId
+      let sessionId = request.cookies.sessionId
 
-    if (!sessionId) {
-      sessionId = randomUUID()
+      if (!sessionId) {
+        sessionId = randomUUID()
+        reply.setCookie('sessionId', sessionId, {
+          path: '/',
+          maxAge: 60 * 60 * 24 * 7, // 7 dias
+        })
+      }
 
-      reply.setCookie('sessionId', sessionId, {
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+      await knex('transactions').insert({
+        id: randomUUID(),
+        title,
+        amount: type === 'credit' ? amount : amount * -1,
+        session_id: sessionId,
       })
+
+      return reply.status(201).send()
+    } catch (error) {
+      console.error('❌ Erro ao criar transação:', error) // Log do erro real
+      return reply
+        .status(500)
+        .send({ error: 'Internal Server Error', details: error })
     }
-
-    await knex('transactions').insert({
-      id: crypto.randomUUID(),
-      title,
-      amount: type === 'credit' ? amount : amount * -1,
-      session_id: sessionId,
-    })
-
-    return reply.status(201).send()
   })
 }
