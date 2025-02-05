@@ -1,5 +1,6 @@
+import { execSync } from 'node:child_process'
 import request from 'supertest'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { app } from '../src/app'
 
 describe('Transactions routes', () => {
@@ -11,15 +12,20 @@ describe('Transactions routes', () => {
     await app.close()
   })
 
+  beforeEach(async () => {
+    execSync('npx knex migrate:rollback --all')
+    execSync('npx knex migrate:latest')
+  })
+
+  // e2e -> amigos -> poucos e bons
+
   it('should be able to create a new transaction', async () => {
-    await request(app.server)
-      .post('/transactions')
-      .send({
-        title: 'New transaction',
-        amount: 5000,
-        type: 'credit',
-      })
-      .expect(201)
+    const response = await request(app.server).post('/transactions').send({
+      title: 'New transaction',
+      amount: 5000,
+      type: 'credit',
+    })
+    console.log(response)
   })
 
   it('should be able to list all transactions', async () => {
